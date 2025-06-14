@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GitHub Repo Cloner (Static)</title>
+  <script src="https://cdn.jsdelivr.net/npm/@isomorphic-git/lightning-fs@4.4.0/dist/lightning-fs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/isomorphic-git@1.21.0/dist/bundle.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 2rem; }
+    input, button { padding: 0.5rem; margin: 0.5rem; }
+    #repos { margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <h1>GitHub Repo Cloner</h1>
+  <input type="text" id="username" placeholder="Enter GitHub username" />
+  <button onclick="fetchRepos()">Get Repos</button>
+  <div id="repos"></div>
+
+  <script>
+    const api = 'https://api.github.com/users';
+
+    async function fetchRepos() {
+      const user = document.getElementById('username').value.trim();
+      if (!user) return;
+      const res = await fetch(`${api}/${user}/repos`);
+      const repos = await res.json();
+
+      const container = document.getElementById('repos');
+      container.innerHTML = '';
+      repos.forEach(repo => {
+        const btn = document.createElement('button');
+        btn.innerText = `Clone ${repo.name}`;
+        btn.onclick = () => cloneAndZipRepo(user, repo.name);
+        container.appendChild(btn);
+      });
+    }
+
+    async function cloneAndZipRepo(owner, repo) {
+      const fs = new LightningFS('fs', { wipe: true });
+      const pfs = fs.promises;
+      const dir = `/clone/${repo}`;
+
+      await git.clone({
+        fs,
+        dir,
+        url: `https://github.com/${owner}/${repo}.git`,
+        singleBranch: true,
+        depth: 1
+      });
+
+      const zip = new JSZip();
+      async function walk(path) {
+        const entries = await pfs.readdir(path);
+        for (const entry of entries) {
+          const fullPath = `${path}/${entry}`;
+          const stat = await pfs.stat(fullPath);
+          if (stat.type === 'file') {
+            const file = await pfs.readFile(fullPath);
+            zip.file(fullPath.replace(`/clone/${repo}/`, ''), file);
+          } else {
+            await walk(fullPath);
+          }
+        }
+      }
+
+      await walk(dir);
+      const content = await zip.generateAsync({ type: 'blob' });
+      saveAs(content, `${repo}.zip`);
+    }
+  </script>
+</body>
+</html>
