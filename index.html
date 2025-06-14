@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GitHub Repo Cloner (Static)</title>
+  <script src="https://cdn.jsdelivr.net/npm/@isomorphic-git/lightning-fs@4.4.0/dist/lightning-fs.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/isomorphic-git@1.30.2/index.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/isomorphic-git@1.21.0/dist/bundle.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
   <style>
@@ -44,13 +44,19 @@
       const pfs = fs.promises;
       const dir = `/clone/${repo}`;
 
-      await git.clone({
-        fs,
-        dir,
-        url: `https://github.com/${owner}/${repo}.git`,
-        singleBranch: true,
-        depth: 1
-      });
+      try {
+        await git.clone({
+          fs,
+          http: git.http,
+          dir,
+          url: `https://github.com/${owner}/${repo}.git`,
+          singleBranch: true,
+          depth: 1
+        });
+      } catch (err) {
+        alert(`Failed to clone ${repo}: ` + err.message);
+        return;
+      }
 
       const zip = new JSZip();
       async function walk(path) {
