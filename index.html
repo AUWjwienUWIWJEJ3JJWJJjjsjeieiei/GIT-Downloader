@@ -3,21 +3,55 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>GitHub Repo Cloner (Static)</title>
-  <script src="https://cdn.jsdelivr.net/npm/@isomorphic-git/lightning-fs@4.4.0/dist/lightning-fs.umd.min.js"></script>
+  <title>GitHub Repo Downloader</title>
+  <script src="https://unpkg.com/@isomorphic-git/lightning-fs"></script>
   <script src="https://cdn.jsdelivr.net/npm/isomorphic-git@1.30.2/index.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
   <style>
-    body { font-family: sans-serif; padding: 2rem; }
-    input, button { padding: 0.5rem; margin: 0.5rem; }
-    #repos { margin-top: 1rem; }
+    body {
+      font-family: Arial, sans-serif;
+      background: #121212;
+      color: #f1f1f1;
+      padding: 2rem;
+      text-align: center;
+    }
+    input, button {
+      padding: 0.5rem;
+      margin: 0.5rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 5px;
+    }
+    input {
+      width: 300px;
+    }
+    button {
+      background: #1f6feb;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #1158c7;
+    }
+    .repo-button {
+      display: inline-block;
+      margin: 0.3rem;
+      background: #2d2d2d;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+    }
+    #repos {
+      margin-top: 2rem;
+    }
   </style>
 </head>
 <body>
-  <h1>GitHub Repo Cloner</h1>
-  <input type="text" id="username" placeholder="Enter GitHub username" />
-  <button onclick="fetchRepos()">Get Repos</button>
+  <h1>GitHub Repo Downloader</h1>
+  <p>Enter a GitHub username and download any public repo as a ZIP</p>
+  <input type="text" id="username" placeholder="e.g. torvalds" />
+  <button onclick="fetchRepos()">List Repos</button>
+
   <div id="repos"></div>
 
   <script>
@@ -25,15 +59,23 @@
 
     async function fetchRepos() {
       const user = document.getElementById('username').value.trim();
-      if (!user) return;
+      if (!user) return alert('Enter a valid GitHub username.');
+      document.getElementById('repos').innerHTML = 'Loading repos...';
       const res = await fetch(`${api}/${user}/repos`);
       const repos = await res.json();
 
       const container = document.getElementById('repos');
       container.innerHTML = '';
+
+      if (!Array.isArray(repos)) {
+        container.innerText = 'Error loading repositories.';
+        return;
+      }
+
       repos.forEach(repo => {
         const btn = document.createElement('button');
-        btn.innerText = `Clone ${repo.name}`;
+        btn.className = 'repo-button';
+        btn.innerText = repo.name;
         btn.onclick = () => cloneAndZipRepo(user, repo.name);
         container.appendChild(btn);
       });
@@ -54,7 +96,7 @@
           depth: 1
         });
       } catch (err) {
-        alert(`Failed to clone ${repo}: ` + err.message);
+        alert(`Clone failed: ${err.message}`);
         return;
       }
 
